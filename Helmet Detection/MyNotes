@@ -1,0 +1,5 @@
+In this I have used Yolo v4 model for custom dataset training. 
+Dataset taken from Kaggle (https://www.kaggle.com/datasets/andrewmvd/helmet-detection)
+The classes are: 1-With helmet, 2-Without helmet
+4000 iteration of training(7-8 hrs on Google Colab GPU)
+Achieved accuracy mAP@0.50 = 72.25 %
