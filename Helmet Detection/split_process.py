@@ -2,7 +2,7 @@ import glob
 import os
 import numpy as np
 import sys
-
+# this .py file should be in same dir as images folder(current_dir), in same path train.txt and test.txt will be created
 #current_dir = "/darknet/data/yolov4_data"   #google drive folder location where imgs and annots are saved
 current_dir = "yolov4_data"   # for local yolov4_data folder in same directory as this file
 split_pct = 10;
