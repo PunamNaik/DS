@@ -1,0 +1,2 @@
+Add .servive,.timer files in Path--> /etc/systemd/system
+Then start/enable the services using --> sudo systemctl start/enable service_name.service
