@@ -7,7 +7,7 @@ from langchain.chat_models import AzureChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.schema import OutputParserException
 from langchain.agents import create_pandas_dataframe_agent
-import apm_templates
+import templates
 import config
 import pandas as pd
 
@@ -53,13 +53,13 @@ def csv_read():
         print('type1 - {}, type2 - {}, type3 - {}, type4 - {}, type5 - {}'.format(type(option1), type(option2), type(option3), type(option4), type(option5)))
         
         if option1 == 'Metric1':
-            temp = apm_templates.template_MTBF
+            temp = templates.template_Metric1
         elif option1 == 'Metric2':
-            temp = apm_templates.template_MTTF
+            temp = templates.template_Metric2
         elif option1 == 'Metric3':
-            temp = apm_templates.template_MTTR
+            temp = templates.template_Metric3
         else:
-            temp = apm_templates.template_all
+            temp = templates.template_all
 
         prompt_template = PromptTemplate(input_variables=['option2', 'option3', 'option4', 'option5'],
                                          template=temp)
@@ -80,7 +80,7 @@ def csv_read():
 
         user_question = st.text_input("Ask your questions here")
 
-        prompt = PromptTemplate(template=apm_templates.default_template, input_variables=["user_question"])
+        prompt = PromptTemplate(template=templates.default_template, input_variables=["user_question"])
         final_prompt2 = prompt.format(user_question=user_question)
         #agent.run(prompt.format_prompt(query=user_question))
         if st.button('Submit') and user_question is not None and user_question != "":
