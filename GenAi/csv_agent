@@ -78,7 +78,7 @@ class main():
 
         user_question = st.text_input("Ask your questions here")
 
-        prompt = PromptTemplate(template=apm_templates.default_template, input_variables=["user_question"])
+        prompt = PromptTemplate(template=templates.default_template, input_variables=["user_question"])
         final_prompt2 = prompt.format(user_question=user_question)
         if st.button('Submit'):
             if user_question is not None and user_question != "":
