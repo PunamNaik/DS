@@ -1,0 +1,97 @@
+from langchain.chains.conversation.memory import ConversationBufferWindowMemory
+from langchain.agents import create_csv_agent
+from langchain.agents import AgentType
+#from dotenv import load_dotenv
+import streamlit as st
+from langchain.chat_models import AzureChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.schema import OutputParserException
+import templates
+import config
+
+class main():
+    #load_dotenv()
+    #st.set_page_config(page_title="Querying CSV")
+    st.header("Assistant")
+    #csv_file = st.file_uploader("Upload a CSV file", type="csv")
+    csv_file = 'Test_Data.csv'
+
+    llm = AzureChatOpenAI(deployment_name=config.deployment_name,
+                          model_name=config.model_name,
+                          openai_api_base=config.openai_api_base,
+                          openai_api_version=config.openai_api_version,
+                          openai_api_key=config.openai_api_key,)
+                          #temperature=0.5)
+
+    #memory = ConversationBufferWindowMemory(memory_key="chat_history")  #k=2
+    agent = create_csv_agent(llm, csv_file, verbose=True, max_iterations=25,
+                             handle_parsing_errors=True,
+                             agent=AgentType.OPENAI_MULTI_FUNCTIONS)#, memory=memory)
+    #handle_parsing_errors="Check your output and make sure it conforms!"
+
+    #agent.agent.verbose = True
+
+    if csv_file is not None:
+        col1, col2, col3, col4, col5 = st.columns(5)
+        with col1:
+            option1 = st.selectbox('Select Metric', ('ALL','Metric1', 'Metric2', 'Metric3'))
+        with col2:
+            option2 = st.selectbox('Select Site', ('Site1', 'Site2'))
+        with col3:
+            option3 = st.selectbox(' Equipment Category', ('Category1', 'Category2'))
+        with col4:
+            option4 = st.selectbox('Equipment Type', ('Type1', 'Type2'))
+        with col5:
+            option5 = st.selectbox('Year', ('2002', '2004', '2012'))
+
+
+        if option1 == 'Metric1':
+            temp = templates.template_Metric1
+        elif option1 == 'Metric2':
+            temp = templates.template_Metric2
+        elif option1 == 'Metric3':
+            temp = templates.template_Metric3
+        else:
+            temp = templates.template_all
+
+        prompt_template = PromptTemplate(input_variables=['option2', 'option3', 'option4', 'option5'],
+                                         template=temp)
+
+        final_prompt = prompt_template.format(option2=option2, option3=option3, option4=option4,
+                                              option5=option5)
+
+        if st.button('Calculate'):
+            with st.spinner(text="In progress..."):
+                try:
+                    st.write(agent.run(final_prompt))
+
+                except ValueError as e:
+                    response = str(e)
+                    if not response.startswith("Could not parse LLM output: `"):
+                        raise e
+                    response = response.removeprefix("Could not parse LLM output: `").removesuffix("`")
+                    st.write(response)
+
+                except Exception as e:
+                    st.write("Agent failed to calculate, Please run your query again.")
+                    #st.write(agent.run(e))
+
+        user_question = st.text_input("Ask your questions here")
+
+        prompt = PromptTemplate(template=apm_templates.default_template, input_variables=["user_question"])
+        final_prompt2 = prompt.format(user_question=user_question)
+        if st.button('Submit'):
+            if user_question is not None and user_question != "":
+                with st.spinner(text="In progress..."):
+                    try:
+                        #agent.verbose=False
+                        st.write(agent.run(final_prompt2))
+
+                    except OutputParserException:
+                        st.write('Something went wrong 🙃, Please run your query again.')
+
+
+
+if __name__ == "__main__":
+    main()
+
