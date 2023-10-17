@@ -1,0 +1,103 @@
+import os
+import streamlit as st
+from streamlit_chat import message
+from langchain.embeddings import OpenAIEmbeddings, HuggingFaceEmbeddings
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import ConversationalRetrievalChain
+from langchain.document_loaders.csv_loader import CSVLoader
+from langchain.vectorstores import FAISS
+from langchain.chat_models import AzureChatOpenAI
+from langchain.prompts import PromptTemplate
+import config
+import pandas as pd
+
+
+llm = AzureChatOpenAI(deployment_name=config.deployment_name,
+                      model_name=config.model_name,
+                      openai_api_base=config.openai_api_base,
+                      openai_api_version=config.openai_api_version,
+                      openai_api_key=config.openai_api_key)
+                        # temperature=0.5)
+
+#process_map = "process_mapping.csv"
+upstream = "BPLM_info.csv"
+ticket_dump = pd.read_csv("ticket_dump.csv")
+
+loader = CSVLoader(file_path=upstream, encoding="utf-8", csv_args={'delimiter': ','})
+data = loader.load()
+
+embeddings = HuggingFaceEmbeddings(
+    model_name="sentence-transformers/multi-qa-mpnet-base-dot-v1",
+    model_kwargs={'device': 'cpu'},
+    encode_kwargs={'normalize_embeddings': False})
+
+#'''
+## This block is 1 time run to create vector store
+doc_list = data
+embed_fn=embeddings
+faiss_db = FAISS.from_documents(doc_list,embed_fn)
+
+# Store creation part
+index_store = 'faiss_index'
+first_run = True
+if first_run:
+    faiss_db.save_local(folder_path=index_store)
+    print('Run 1')
+    print("New store created...")
+else:
+    if os.path.exists(index_store):
+        local_db = FAISS.load_local(index_store, embed_fn)
+        # merging the new embedding with the existing index store
+        local_db.merge_from(faiss_db)
+        print("Merge completed")
+        local_db.save_local(index_store)
+        print("Updated index saved")
+    else:
+        faiss_db.save_local(folder_path=index_store)
+        print("New store created...")
+
+#st.write("success!")
+#'''
+
+vectorStore = FAISS.load_local('faiss_index',embeddings)
+print("Vector Model Loaded")
+
+prompt = """
+The Ticket dump that you will analyze is related to Issue faced in Energy Industry operations.
+Use your general understanding of oil and gas industry to understand the context of input ticket dump.
+
+column PID (Project Initiation Document) in dataframe represents hierarchy of processes.
+for example, 1 is the parent process, 1.1,1.2,.. are children of 1, 1.1.1 is child of 1.1, 1.2.1 is child of 1.2 and so on.
+
+Try to match ticket dump with "Description" column of dataframe.
+
+**FORMATTING INSTRUCTIONS**
+Your final response should consist of all 3 Business Process levels. Output format example as below:
+"BPLM1 = Process1,
+BPLM2 = Process2,
+BPLM3 = Process3"
+
+Final response in case of failures:
+Sorry, couldn't map given ticket due to poor description/lack of information.
+
+{question}
+{context}
+"""
+
+query = "Analyze following ticket dump:" \
+        "Ticket Description = ''," \
+        "Tool Name = ''," \
+        "Tool Info = ''"\
+        "Assignment Group = ''"
+
+context = ""
+retriever = vectorStore.as_retriever(search_type="similarity", search_kwargs={"k": 1})
+qa_prompt = PromptTemplate(template=prompt, input_variables=["question","context"])
+#final_prompt = qa_prompt.format(command=query, context="this is test context")
+chain = ConversationalRetrievalChain.from_llm(llm, chain_type="stuff",retriever=retriever,combine_docs_chain_kwargs={"prompt": qa_prompt},verbose=True)
+chain_response = chain.run({"question": query, "chat_history": []})
+print(chain_response)
+
+
+
+
