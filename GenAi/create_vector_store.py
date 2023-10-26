@@ -12,6 +12,8 @@ import config
 import pandas as pd
 import templates
 
+#https://medium.com/international-school-of-ai-data-science/implementing-rag-with-langchain-and-hugging-face-28e3ea66c5f7
+
 llm = AzureChatOpenAI(deployment_name=config.deployment_name,
                       model_name=config.model_name,
                       openai_api_base=config.openai_api_base,
@@ -39,7 +41,7 @@ print(type(data))
 print(len(data))
 print(data)
 
-'''
+
 # This block is 1 time run to create vector store
 doc_list = data
 embed_fn=embeddings
@@ -62,12 +64,11 @@ else:
     else:
         faiss_db.save_local(folder_path=index_store)
         print("New store created...")
-
+# vector store creation completed here
 
 text = "This is a test document."
 query_result = embeddings.embed_query(text)
 print(query_result)
-'''
 
 
 vectorStore = FAISS.load_local('faiss_index',embeddings)
@@ -80,4 +81,20 @@ print(searchDocs[0].page_content)
 retriever = vectorStore.as_retriever(search_type="similarity", search_kwargs={"k": 3})
 docs = retriever.get_relevant_documents(templates.query2)
 print(docs[0].page_content)
+
+chain = ConversationalRetrievalChain.from_llm(llm, chain_type="stuff",retriever=retriever,combine_docs_chain_kwargs={"prompt": qa_prompt},verbose=True)
+# chain_type=stuff/MapReduce/Refine/MapRerank
+
+if st.button('Process'):
+    query = "............."
+
+    with st.spinner(text="In progress..."):
+        try:
+            #resp = csv_agent.run(final_prompt)
+            resp = chain.run({"question": query, "chat_history": []})
+            st.write(resp)
+
+        except Exception as e:
+            # print(e)
+            st.write(e)
 
